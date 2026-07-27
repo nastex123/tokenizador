@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Chat v1.0</title>
+    <style>
+        body {
+            background: #008080;
+            font-family: "Courier New", monospace;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .window {
+            width: 750px;
+            margin: auto;
+            background: #C0C0C0;
+            border: 2px solid #fff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            box-shadow: 8px 8px #404040;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        .titlebar {
+            background: navy;
+            color: white;
+            padding: 8px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .toolbar {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        .toolbar select {
+            padding: 4px 8px;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            border: 2px solid white;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            background: #C0C0C0;
+            cursor: pointer;
+        }
+
+        .toolbar select:focus {
+            outline: 2px solid #000080;
+        }
+
+        button {
+            padding: 4px 12px;
+            background: #C0C0C0;
+            border: 2px solid white;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            cursor: pointer;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+        }
+
+        button:active {
+            border: 2px solid #404040;
+            border-right-color: white;
+            border-bottom-color: white;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            background: white;
+            border: 2px inset gray;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 8px;
+            border: 2px solid #808080;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #E0E0E0;
+            border-color: #808080;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: #FFFFCC;
+            border-color: #808080;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+        }
+
+        .msg-text {
+            margin-bottom: 6px;
+            word-break: break-word;
+        }
+
+        .msg-meta {
+            font-size: 10px;
+            color: #808080;
+            border-top: 1px solid #C0C0C0;
+            padding-top: 4px;
+        }
+
+        .msg-meta .label {
+            font-weight: bold;
+            color: #000080;
+        }
+
+        .input-area {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 6px 8px;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+            border: 2px inset gray;
+            background: white;
+        }
+
+        .input-area button {
+            padding: 6px 16px;
+            font-weight: bold;
+        }
+
+        .status {
+            margin-top: 8px;
+            padding: 4px 8px;
+            border-top: 2px solid white;
+            background: #C0C0C0;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .loading {
+            align-self: flex-start;
+            background: #FFFFCC;
+            border: 2px inset gray;
+            padding: 8px;
+            font-size: 11px;
+            color: #808080;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #808080;
+            padding: 40px;
+            font-size: 12px;
+        }
+
+        /* ── TABLA COMPARATIVA POR MENSAJE ── */
+        .cmp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            font-family: "Courier New", monospace;
+            margin-top: 6px;
+        }
+
+        .cmp-table th {
+            background: #000080;
+            color: #fff;
+            padding: 3px 5px;
+            text-align: left;
+            border: 1px solid #808080;
+            white-space: nowrap;
+            font-size: 10px;
+        }
+
+        .cmp-table th.r { text-align: right; }
+
+        .cmp-table td {
+            padding: 2px 5px;
+            border: 1px solid #808080;
+        }
+
+        .cmp-table td.r { text-align: right; }
+
+        .cmp-table tr.even td { background: #E8E8E8; }
+        .cmp-table tr.odd td  { background: #fff; }
+
+        .cmp-table td.cheap   { color: #008000; font-weight: bold; }
+        .cmp-table td.expensive { color: #8B0000; font-weight: bold; }
+
+        .cmp-table td.current {
+            background: #FFFF00;
+            font-weight: bold;
+        }
+
+        .prov-openai    { color: #008000; }
+        .prov-anthropic  { color: #8B4513; }
+        .prov-google     { color: #000080; }
+
+        .cmp-separator {
+            font-size: 10px;
+            color: #808080;
+            margin-top: 4px;
+            margin-bottom: 2px;
+            border-top: 1px dashed #C0C0C0;
+            padding-top: 4px;
+        }
+
+                ::-webkit-scrollbar { width: 16px; }
+        ::-webkit-scrollbar-track { background: #C0C0C0; border: 1px solid #808080; }
+        ::-webkit-scrollbar-thumb { background: #C0C0C0; border: 2px solid white; border-right-color: #404040; border-bottom-color: #404040; }
+
+        /* ── PANEL DE OPTIMIZACIÓN DE PROMPTS ── */
+        .optimize-panel {
+            background: #C0C0C0;
+            border: 2px solid #fff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            margin-bottom: 10px;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .optimize-header {
+            background: #000080;
+            color: white;
+            padding: 6px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .optimize-header button {
+            background: #C0C0C0;
+            border: 2px solid #fff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            width: 20px;
+            height: 18px;
+            font-size: 12px;
+            line-height: 1;
+            padding: 0;
+            cursor: pointer;
+            color: black;
+        }
+
+        .optimize-header button:active {
+            border: 2px solid #404040;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+        }
+
+        .optimize-content {
+            padding: 10px;
+        }
+
+        .compare-prompts {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: stretch;
+        }
+
+        .prompt-box {
+            flex: 1;
+            background: white;
+            border: 2px inset gray;
+            padding: 8px;
+            min-width: 0;
+        }
+
+        .prompt-box.optimized {
+            background: #E8F5E9;
+        }
+
+        .prompt-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #000080;
+            margin-bottom: 4px;
+            border-bottom: 1px solid #C0C0C0;
+            padding-bottom: 2px;
+        }
+
+        .prompt-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-family: "Courier New", monospace;
+        }
+
+        .prompt-meta {
+            margin-top: 6px;
+            font-size: 10px;
+            color: #808080;
+            display: flex;
+            gap: 12px;
+        }
+
+        .prompt-arrow {
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            color: #000080;
+            font-weight: bold;
+        }
+
+        .savings-bar {
+            display: flex;
+            gap: 15px;
+            background: #FFFFCC;
+            border: 1px solid #808080;
+            padding: 8px;
+            margin: 10px 0;
+        }
+
+        .saving-item {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .saving-label {
+            font-size: 9px;
+            color: #808080;
+            text-transform: uppercase;
+        }
+
+        .saving-value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #008000;
+        }
+
+        .saving-value.quality {
+            color: #000080;
+        }
+
+        .issues-section {
+            margin-bottom: 10px;
+        }
+
+        .issue-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            padding: 4px 0;
+            font-size: 10px;
+            border-bottom: 1px dashed #C0C0C0;
+        }
+
+        .issue-severity {
+            padding: 1px 4px;
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            min-width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .issue-severity.high { background: #8B0000; }
+        .issue-severity.medium { background: #FF8C00; }
+        .issue-severity.low { background: #808080; }
+
+        .optimize-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .optimize-actions button {
+            flex: 1;
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="titlebar">Token Chat v1.0</div>
+    <div class="content">
+        <div class="toolbar">
+    <select id="modelSelect">
+        <option value="gpt-4o-mini">GPT-4o-mini</option>
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+        <option value="gpt-4">GPT-4</option>
+        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        <option value="o1-mini">o1-mini</option>
+        <option value="o1">o1</option>
+    </select>
+            <button id="btnModo">Auto</button>
+            <button id="btnComparar">Comparar Modelos</button>
+            <button id="btnLimpiar">Limpiar Chat</button>
+            <button id="btnCopiar">Copiar Chat</button>
+    <button id="btnOptimize" title="Optimizar Prompt">✨ Mejor Prompt</button>
+</div>
+
+        <div class="chat-area" id="chatArea">
+    <!-- Panel de optimización (inicialmente oculto) -->
+    <div id="optimizePanel" class="optimize-panel" style="display:none;">
+        <div class="optimize-header">
+            <span>✨ Prompt Optimizado</span>
+            <button id="btnCloseOptimize">×</button>
+        </div>
+        <div class="optimize-content">
+            <div class="issues-section" id="issuesSection"></div>
+            <div class="compare-prompts">
+                <div class="prompt-box">
+                    <div class="prompt-label">ORIGINAL</div>
+                    <pre id="originalPrompt"></pre>
+                    <div class="prompt-meta">
+                        <span id="origTokens">0 tokens</span>
+                        <span id="origCost">$0.000000</span>
+                    </div>
+                </div>
+                <div class="prompt-arrow">→</div>
+                <div class="prompt-box optimized">
+                    <div class="prompt-label">OPTIMIZADO</div>
+                    <pre id="optimizedPrompt"></pre>
+                    <div class="prompt-meta">
+                        <span id="optTokens">0 tokens</span>
+                        <span id="optCost">$0.000000</span>
+                    </div>
+                </div>
+            </div>
+            <div class="savings-bar">
+                <div class="saving-item">
+                    <span class="saving-label">Tokens ahorrados</span>
+                    <span class="saving-value" id="tokenSavings">0 (-0%)</span>
+                </div>
+                <div class="saving-item">
+                    <span class="saving-label">Costo ahorrado</span>
+                    <span class="saving-value" id="costSavings">$0 (-0%)</span>
+                </div>
+                <div class="saving-item">
+                    <span class="saving-label">Mejora esperada</span>
+                    <span class="saving-value quality" id="qualityBoost">Media</span>
+                </div>
+            </div>
+            <div class="optimize-actions">
+                <button id="btnUseOptimized">Usar este prompt</button>
+                <button id="btnCopyOptimized">Copiar optimizado</button>
+                <button id="btnExplain">Ver explicación</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="empty-state" id="emptyState">
+        Escribe un mensaje para comenzar...
+    </div>
+</div>
+
+        <div class="input-area">
+            <input type="text" id="inputField" placeholder="Escribe un mensaje..." autofocus>
+            <button id="btnEnviar">Enviar</button>
+        </div>
+
+        <div class="status">
+            Estado: <span id="status">Listo</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatArea = document.getElementById('chatArea');
+    const inputField = document.getElementById('inputField');
+    const btnEnviar = document.getElementById('btnEnviar');
+    const btnCopiar = document.getElementById('btnCopiar');
+    const btnModo = document.getElementById('btnModo');
+    const btnComparar = document.getElementById('btnComparar');
+    const btnLimpiar = document.getElementById('btnLimpiar');
+    const statusEl = document.getElementById('status');
+    const emptyState = document.getElementById('emptyState');
+
+    const STORAGE_KEY = 'token_chat_messages';
+    const MODE_KEY = 'token_chat_mode';
+    let messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const modelSelect = document.getElementById('modelSelect');
+    const MODEL_KEY = 'token_chat_model';
+    modelSelect.value = localStorage.getItem(MODEL_KEY) || 'gpt-4o-mini';
+    let totalCost = parseFloat(localStorage.getItem('token_chat_total') || '0');
+
+    modelSelect.addEventListener('change', () => {
+        localStorage.setItem(MODEL_KEY, modelSelect.value);
+    });
+
+    const MODOS = ['Auto', 'ES-EN', 'EN-ES'];
+    let modoIndex = parseInt(localStorage.getItem(MODE_KEY) || '0');
+
+    function saveMessages() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+
+    function updateMode() {
+        btnModo.textContent = MODOS[modoIndex];
+        localStorage.setItem(MODE_KEY, modoIndex.toString());
+    }
+
+    function getModeValue() {
+        const map = { 'Auto': 'auto', 'ES-EN': 'es-en', 'EN-ES': 'en-es' };
+        return map[MODOS[modoIndex]];
+    }
+
+    btnModo.addEventListener('click', () => {
+        modoIndex = (modoIndex + 1) % MODOS.length;
+        updateMode();
+        statusEl.textContent = 'Modo: ' + MODOS[modoIndex];
+    });
+
+    let compararVisible = false;
+    btnComparar.addEventListener('click', () => {
+        compararVisible = !compararVisible;
+        const existing = document.getElementById('tablaComparativa');
+        if (compararVisible) {
+            if (!existing) {
+                const table = buildGlobalCompareTable();
+                table.id = 'tablaComparativa';
+                chatArea.insertBefore(table, chatArea.firstChild);
+            }
+            statusEl.textContent = 'Tabla comparativa visible';
+        } else {
+            if (existing) existing.remove();
+            statusEl.textContent = 'Tabla comparativa oculta';
+        }
+    });
+
+    /* ────────────────────────────────────────────
+       PRECIOS Y TABLA COMPARATIVA
+    ──────────────────────────────────────────── */
+    const PRECIOS = {
+        "openai": {
+            "gpt-4o":        { input: 2.50,  output: 10.00, context: 128000 },
+            "gpt-4o-mini":   { input: 0.15,  output: 0.60,  context: 128000 },
+            "gpt-4-turbo":   { input: 10.00, output: 30.00, context: 128000 },
+            "gpt-4":         { input: 30.00, output: 60.00, context: 8192 },
+            "gpt-3.5-turbo": { input: 0.50,  output: 1.50,  context: 16385 },
+            "o1":            { input: 15.00, output: 60.00, context: 200000 },
+            "o1-mini":       { input: 3.00,  output: 12.00, context: 128000 },
+        },
+        "anthropic": {
+            "claude-3.5-sonnet": { input: 3.00,  output: 15.00, context: 200000 },
+            "claude-3.5-haiku":  { input: 0.80,  output: 4.00,  context: 200000 },
+            "claude-3-opus":     { input: 15.00, output: 75.00, context: 200000 },
+        },
+        "google": {
+            "gemini-1.5-pro":   { input: 3.50,  output: 10.50, context: 2000000 },
+            "gemini-1.5-flash": { input: 0.075, output: 0.30,  context: 1000000 },
+            "gemini-1.0-pro":   { input: 0.50,  output: 1.50,  context: 32768 },
+        },
+    };
+
+    function fmtCtx(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(0) + "M";
+        if (n >= 1000) return (n / 1000).toFixed(0) + "K";
+        return n.toString();
+    }
+
+    function fmtPrice(v) {
+        if (v < 1) return "$" + v.toFixed(3);
+        return "$" + v.toFixed(2);
+    }
+
+    function fmtCost(v) {
+        if (v === 0) return "$0";
+        if (v < 0.000001) return "$" + v.toExponential(2);
+        if (v < 0.001) return "$" + v.toFixed(6);
+        if (v < 0.01) return "$" + v.toFixed(4);
+        return "$" + v.toFixed(6);
+    }
+
+    function buildGlobalCompareTable() {
+        const proveedores = [
+            { key: "openai", nombre: "OpenAI" },
+            { key: "anthropic", nombre: "Anthropic" },
+            { key: "google", nombre: "Google" },
+        ];
+
+        let html = '<div id="tablaComparativa" class="message bot" style="max-width:100%;padding:10px;">';
+        html += '<div class="msg-text"><strong>Tabla Comparativa de Modelos (USD por 1M tokens)</strong></div>';
+        html += '<table class="cmp-table"><thead><tr>';
+        html += '<th>Proveedor</th><th>Modelo</th><th class="r">Entrada</th><th class="r">Salida</th><th class="r">Total/1M</th><th class="r">Ctx</th>';
+        html += '</tr></thead><tbody>';
+
+        let rowIdx = 0;
+        for (const prov of proveedores) {
+            const modelos = PRECIOS[prov.key];
+            for (const [modelo, p] of Object.entries(modelos)) {
+                const total = p.input + p.output;
+                const cls = rowIdx % 2 === 0 ? 'even' : 'odd';
+                html += '<tr class="' + cls + '">';
+                html += '<td class="prov-' + prov.key + '">' + prov.nombre + '</td>';
+                html += '<td>' + modelo + '</td>';
+                html += '<td class="r">' + fmtPrice(p.input) + '</td>';
+                html += '<td class="r">' + fmtPrice(p.output) + '</td>';
+                html += '<td class="r">' + fmtPrice(total) + '</td>';
+                html += '<td class="r">' + fmtCtx(p.context) + '</td>';
+                html += '</tr>';
+                rowIdx++;
+            }
+        }
+
+        html += '</tbody></table>';
+        html += '<div class="cmp-separator" style="margin-top:8px;">Precios de referencia en USD/1M tokens. Los modelos actuales del chat aparecen marcados con el costo real por mensaje.</div>';
+        html += '</div>';
+        return html;
+    }
+
+    function buildCompareHTML(origTokens, transTokens, currentModel) {
+        const proveedores = [
+            { key: "openai",    nombre: "OpenAI" },
+            { key: "anthropic", nombre: "Anthropic" },
+            { key: "google",    nombre: "Google" },
+        ];
+
+        let rows = [];
+        for (const prov of proveedores) {
+            const modelos = PRECIOS[prov.key];
+            for (const [modelo, p] of Object.entries(modelos)) {
+                const inputCost = (origTokens / 1_000_000) * p.input;
+                const outputCost = (transTokens / 1_000_000) * p.output;
+                const total = inputCost + outputCost;
+                rows.push({
+                    provider: prov.key,
+                    providerName: prov.nombre,
+                    model: modelo,
+                    inputCost: inputCost,
+                    outputCost: outputCost,
+                    total: total,
+                    context: p.context,
+                    isCurrent: modelo === currentModel,
+                });
+            }
+        }
+
+        rows.sort((a, b) => a.total - b.total);
+
+        let html = '';
+        html += '<div class="cmp-separator">Comparativa de costos para este mensaje:</div>';
+        html += '<table class="cmp-table">';
+        html += '<thead><tr>';
+        html += '<th>Prov.</th>';
+        html += '<th>Modelo</th>';
+        html += '<th class="r">Entrada</th>';
+        html += '<th class="r">Salida</th>';
+        html += '<th class="r">Total</th>';
+        html += '<th class="r">Ctx</th>';
+        html += '</tr></thead><tbody>';
+
+        const minTotal = rows[0].total;
+        const maxTotal = rows[rows.length - 1].total;
+
+        rows.forEach((r, i) => {
+            const cls = i % 2 === 0 ? 'even' : 'odd';
+            const priceCls = r.total === minTotal ? 'cheap' : (r.total === maxTotal ? 'expensive' : '');
+            const curCls = r.isCurrent ? 'current' : '';
+
+            html += '<tr class="' + cls + '">';
+            html += '<td class="prov-' + r.provider + ' ' + curCls + '">' + r.providerName + '</td>';
+            html += '<td class="' + curCls + '">' + r.model + (r.isCurrent ? ' ◄' : '') + '</td>';
+            html += '<td class="r ' + curCls + '">' + fmtCost(r.inputCost) + '</td>';
+            html += '<td class="r ' + curCls + '">' + fmtCost(r.outputCost) + '</td>';
+            html += '<td class="r ' + priceCls + ' ' + curCls + '">' + fmtCost(r.total) + '</td>';
+            html += '<td class="r ' + curCls + '">' + fmtCtx(r.context) + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+
+        return html;
+    }
+
+    /* ────────────────────────────────────────────
+       CHAT
+    ──────────────────────────────────────────── */
+
+    function formatTime(ts) {
+        const d = new Date(ts);
+        return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    }
+
+    function renderMessage(msg) {
+        emptyState.style.display = 'none';
+
+        const div = document.createElement('div');
+        div.className = 'message ' + msg.role;
+
+        let meta = '';
+        if (msg.role === 'user') {
+            meta = '<span class="label">' + escapeHtml(msg.direction) + '</span>' +
+                   ' | <span class="label">Tokens:</span> ' + msg.tokens +
+                   ' | ' + formatTime(msg.timestamp);
+        } else {
+            meta = '<span class="label">' + escapeHtml(msg.direction) + '</span>' +
+                   ' | <span class="label">Modelo:</span> ' + escapeHtml(msg.model || '') +
+                   ' | <span class="label">Tokens:</span> ' + msg.tokens +
+                   ' | <span class="label">Costo:</span> $' + (msg.cost ? msg.cost.total.toFixed(6) : '0') + ' USD' +
+                   ' | ' + formatTime(msg.timestamp);
+        }
+
+        let cmpHTML = '';
+        if (msg.role === 'bot' && msg.origTokens !== undefined && msg.transTokens !== undefined) {
+            cmpHTML = buildCompareHTML(msg.origTokens, msg.transTokens, msg.model || '');
+        }
+
+        div.innerHTML =
+            '<div class="msg-text">' + escapeHtml(msg.text) + '</div>' +
+            '<div class="msg-meta">' + meta + '</div>' +
+            cmpHTML;
+
+        chatArea.appendChild(div);
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function renderAllMessages() {
+        chatArea.innerHTML = '';
+        if (messages.length === 0) {
+            chatArea.innerHTML = '<div class="empty-state" id="emptyState">Escribe un mensaje para comenzar...</div>';
+        } else {
+            messages.forEach(renderMessage);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+    }
+
+    function showLoading() {
+        const div = document.createElement('div');
+        div.className = 'loading';
+        div.id = 'loadingMsg';
+        div.textContent = 'Procesando...';
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function hideLoading() {
+        const el = document.getElementById('loadingMsg');
+        if (el) el.remove();
+    }
+
+    async function sendMessage() {
+        const text = inputField.value.trim();
+        if (!text) return;
+
+        inputField.value = '';
+        statusEl.textContent = 'Procesando...';
+
+        const model = modelSelect.value;
+        const modeValue = getModeValue();
+
+        const userMsg = {
+            role: 'user',
+            text: text,
+            words: text.split(/\s+/).length,
+            tokens: 0,
+            direction: MODOS[modoIndex],
+            cost: null,
+            timestamp: Date.now()
+        };
+
+        messages.push(userMsg);
+        renderMessage(userMsg);
+        saveMessages();
+        showLoading();
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, mode: modeValue, model: model }),
+            });
+            const data = await res.json();
+
+            hideLoading();
+
+            if (data.error) {
+                statusEl.innerHTML = '<span style="color:#8B0000">ERROR: ' + escapeHtml(data.error) + '</span>';
+                return;
+            }
+
+            userMsg.tokens = data.orig_tokens;
+            userMsg.direction = data.direction_label;
+            userMsg.cost = data.cost;
+            userMsg.model = data.model;
+
+            totalCost += data.cost.total;
+            localStorage.setItem('token_chat_total', totalCost.toString());
+
+            const botMsg = {
+                role: 'bot',
+                text: data.translated,
+                direction: data.direction_label,
+                words: data.trans_words,
+                tokens: data.trans_tokens,
+                origTokens: data.orig_tokens,
+                transTokens: data.trans_tokens,
+                cost: data.cost,
+                model: data.model,
+                timestamp: Date.now()
+            };
+
+            messages.push(botMsg);
+            saveMessages();
+
+            chatArea.removeChild(chatArea.lastChild);
+            renderMessage(userMsg);
+            renderMessage(botMsg);
+
+            statusEl.textContent = 'Listo | Total: $' + totalCost.toFixed(6) + ' USD';
+        } catch (err) {
+            hideLoading();
+            statusEl.innerHTML = '<span style="color:#8B0000">ERROR: ' + escapeHtml(err.message) + '</span>';
+        }
+    }
+
+         /* ────────────────────────────────────────────
+       OPTIMIZADOR DE PROMPTS
+    ──────────────────────────────────────────── */
+
+    const btnOptimize = document.getElementById('btnOptimize');
+    const optimizePanel = document.getElementById('optimizePanel');
+    const btnCloseOptimize = document.getElementById('btnCloseOptimize');
+
+    btnOptimize.addEventListener('click', async () => {
+        const text = inputField.value.trim();
+        if (!text) {
+            statusEl.textContent = 'Escribe un mensaje primero';
+            return;
+        }
+        
+        statusEl.textContent = 'Optimizando prompt...';
+        
+        try {
+            const res = await fetch('/api/optimize-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, model: modelSelect.value }),
+            });
+            const data = await res.json();
+            
+            if (data.error) {
+                statusEl.innerHTML = '<span style="color:#8B0000">ERROR: ' + escapeHtml(data.error) + '</span>';
+                return;
+            }
+            
+            showOptimizePanel(data);
+            statusEl.textContent = 'Prompt optimizado listo';
+            
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color:#8B0000">ERROR: ' + escapeHtml(err.message) + '</span>';
+        }
+    });
+
+    btnCloseOptimize.addEventListener('click', () => {
+        optimizePanel.style.display = 'none';
+    });
+
+    function showOptimizePanel(data) {
+        // Llenar datos
+        document.getElementById('originalPrompt').textContent = data.original;
+        document.getElementById('optimizedPrompt').textContent = data.optimized;
+        document.getElementById('origTokens').textContent = data.original_tokens + ' tokens';
+        document.getElementById('optTokens').textContent = data.optimized_tokens + ' tokens';
+        document.getElementById('origCost').textContent = '$' + (data.cost_original || 0).toFixed(6);
+        document.getElementById('optCost').textContent = '$' + (data.cost_optimized || 0).toFixed(6);
+        
+        // Ahorros
+        const tokenSavingsEl = document.getElementById('tokenSavings');
+        tokenSavingsEl.textContent = `${data.token_savings} (-${data.token_savings_pct}%)`;
+        tokenSavingsEl.style.color = data.token_savings > 0 ? '#008000' : '#808080';
+        
+        const costSavingsEl = document.getElementById('costSavings');
+        costSavingsEl.textContent = `$${(data.cost_savings || 0).toFixed(6)} (-${data.cost_savings_pct || 0}%)`;
+        
+        document.getElementById('qualityBoost').textContent = data.estimated_quality_boost.toUpperCase();
+        
+        // Issues
+        const issuesSection = document.getElementById('issuesSection');
+        issuesSection.innerHTML = '';
+        if (data.issues_found.length === 0) {
+            issuesSection.innerHTML = '<div style="color:#008000; font-size:10px;">✓ No se detectaron problemas significativos</div>';
+        } else {
+            data.issues_found.forEach(issue => {
+                const div = document.createElement('div');
+                div.className = 'issue-item';
+                div.innerHTML = `
+                    <span class="issue-severity ${issue.severity}">${issue.severity.toUpperCase()}</span>
+                    <div>
+                        <div style="font-weight:bold;">${escapeHtml(issue.description)}</div>
+                        <div style="color:#606060;">→ ${escapeHtml(issue.suggestion)}</div>
+                    </div>
+                `;
+                issuesSection.appendChild(div);
+            });
+        }
+        
+        // Acciones
+        document.getElementById('btnUseOptimized').onclick = () => {
+            inputField.value = data.optimized;
+            optimizePanel.style.display = 'none';
+            statusEl.textContent = 'Prompt optimizado cargado';
+        };
+        
+        document.getElementById('btnCopyOptimized').onclick = () => {
+            navigator.clipboard.writeText(data.optimized);
+            statusEl.textContent = 'Prompt optimizado copiado';
+        };
+        
+        document.getElementById('btnExplain').onclick = () => {
+            let explanation = 'ANÁLISIS DEL PROMPT:\n\n';
+            if (data.issues_found.length === 0) {
+                explanation += 'Tu prompt está bien estructurado. No se detectaron mejoras significativas.';
+            } else {
+                data.issues_found.forEach((issue, i) => {
+                    explanation += `${i+1}. [${issue.severity.toUpperCase()}] ${issue.description}\n`;
+                    explanation += `   Solución: ${issue.suggestion}\n\n`;
+                });
+            }
+            explanation += `\nESTRATEGIA USADA: ${data.provider_strategy.toUpperCase()}`;
+            alert(explanation);
+        };
+        
+        optimizePanel.style.display = 'block';
+        chatArea.scrollTop = 0; // Mostrar panel arriba
+    }
+
+    /* ────────────────────────────────────────────
+       CHAT (código existente)
+    ──────────────────────────────────────────── */
+
+    btnEnviar.addEventListener('click', sendMessage);
+    inputField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    btnLimpiar.addEventListener('click', () => {
+        if (!confirm('Borrar todo el historial?')) return;
+        messages = [];
+        totalCost = 0;
+        saveMessages();
+        localStorage.setItem('token_chat_total', '0');
+        renderAllMessages();
+        statusEl.textContent = 'Listo | Total: $' + totalCost.toFixed(6) + ' USD';
+    });
+
+    btnCopiar.addEventListener('click', () => {
+        if (messages.length === 0) return;
+        let text = '';
+        messages.forEach(msg => {
+            const role = msg.role === 'user' ? 'TU' : 'BOT';
+            text += role + ': ' + msg.text + '\n';
+        });
+        navigator.clipboard.writeText(text);
+        statusEl.textContent = 'Chat copiado al portapapeles';
+    });
+
+    renderAllMessages();
+    updateMode();
+    inputField.focus();
+    statusEl.textContent = 'Listo | Total: $' + totalCost.toFixed(6) + ' USD';
+</script>
+
+</body>
+</html>
